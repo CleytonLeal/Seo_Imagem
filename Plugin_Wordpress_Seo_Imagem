@@ -1,1 +1,147 @@
+<?php
+/*
+Plugin Name: SEO de Imagens
+Description: Este plugin otimiza o SEO do seu site preenchendo automaticamente campos de imagens, como texto alternativo, título, legenda e descrição. Agora, suas imagens refletirão melhor o conteúdo do seu site, melhorando a acessibilidade e o ranking nos mecanismos de busca.
+Author: Cleyton Leal
+Version: 1.0
+License: GPL
+Website: https://www.agenciamatuza.com
+*/
+
+// Adicionar menu de administração
+function menu_seo_imagens() {
+    add_menu_page('SEO de Imagens', 'SEO de Imagens', 'manage_options', 'seo-imagens', 'pagina_seo_imagens');
+}
+add_action('admin_menu', 'menu_seo_imagens');
+
+// Estilos do Materialize CSS
+function incluir_estilos_materialize() {
+    wp_enqueue_style('materialize-css', 'https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css');
+}
+add_action('admin_enqueue_scripts', 'incluir_estilos_materialize');
+
+function incluir_materialize_js() {
+    wp_enqueue_script('materialize-js', 'https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js');
+}
+add_action('admin_enqueue_scripts', 'incluir_materialize_js');
+
+// Página de configuração do plugin
+function pagina_seo_imagens() {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('Você não tem permissão para acessar esta página.'));
+    }
+
+    if (isset($_POST['submit'])) {
+        // Save field values as plugin options
+        update_option('alt_text', sanitize_text_field($_POST['alt_text']));
+        update_option('titulo', sanitize_text_field($_POST['titulo']));
+        update_option('legenda', sanitize_text_field($_POST['legenda']));
+        update_option('descricao', sanitize_textarea_field($_POST['descricao']));
+        update_option('url', sanitize_text_field($_POST['url']));
+    }
+
+    $alt_text = get_option('alt_text', '');
+    $titulo = get_option('titulo', '');
+    $legenda = get_option('legenda', '');
+    $descricao = get_option('descricao', '');
+    $url = get_option('url', '');
+
+    echo '<div class="wrap">
+        <h2 class="header">SEO de Imagens</h2>
+        <form method="post" action="">
+            <div class="input-field">
+                <input type="text" name="alt_text" id="alt_text" value="' . esc_attr($alt_text) . '">
+                <label for="alt_text">Texto Alternativo (Alt Text)</label>
+            </div>
+
+            <div class="input-field">
+                <input type="text" name="titulo" id="titulo" value="' . esc_attr($titulo) . '">
+                <label for="titulo">Título</label>
+            </div>
+
+            <div class="input-field">
+                <input type="text" name="legenda" id="legenda" value="' . esc_attr($legenda) . '">
+                <label for="legenda">Legenda</label>
+            </div>
+
+            <div class="input-field">
+                <textarea name="descricao" id="descricao" class="materialize-textarea">' . esc_textarea($descricao) . '</textarea>
+                <label for="descricao">Descrição</label>
+            </div>
+
+            <!-- Campo de URL -->
+            <div class="input-field">
+                <input type="text" name="url" id="url" value="' . esc_url($url) . '">
+                <label for="url">URL digite algo que seu site e</label>
+            </div>
+
+            <button type="submit" name="submit" class="waves-effect waves-light btn">Salvar</button>
+        </form>
+    </div>';
+}
+
+// Pré-preencher campos padrão após o upload
+function preencher_campos_padrao_apos_upload($attachment_id) {
+    $alt_text = get_option('alt_text', '');
+    $titulo = get_option('titulo', '');
+    $legenda = get_option('legenda', '');
+    $descricao = get_option('descricao', '');
+
+    // Obter informações da imagem
+    $attachment_data = get_post($attachment_id);
+
+    // Limpar os campos padrão do WordPress
+    update_post_meta($attachment_id, '_wp_attachment_image_alt', '');
+    wp_update_post(array(
+        'ID' => $attachment_id,
+        'post_title' => '',
+        'post_excerpt' => '',
+        'post_content' => '',
+    ));
+
+    // Preencher os campos padrão
+    if (!empty($alt_text)) {
+        update_post_meta($attachment_id, '_wp_attachment_image_alt', $alt_text);
+    }
+
+    if (!empty($titulo)) {
+        wp_update_post(array(
+            'ID' => $attachment_id,
+            'post_title' => $titulo,
+        ));
+    }
+
+    if (!empty($legenda)) {
+        wp_update_post(array(
+            'ID' => $attachment_id,
+            'post_excerpt' => $legenda,
+        ));
+    }
+
+    if (!empty($descricao)) {
+        wp_update_post(array(
+            'ID' => $attachment_id,
+            'post_content' => $descricao,
+        ));
+    }
+}
+
+add_action('add_attachment', 'preencher_campos_padrao_apos_upload');
+
+// Função para renomear arquivos de upload
+add_filter('wp_handle_upload_prefilter', 'renomear_arquivo_upload');
+
+function renomear_arquivo_upload($file) {
+    $filename = $file['name'];
+    $extensao = pathinfo($filename, PATHINFO_EXTENSION);
+
+    // Gere um nome de arquivo aleatório
+    $url = get_option('url', ''); // Obtém a URL do campo
+    $novo_nome = $url . '-' . wp_generate_password(8) . '.' . $extensao;
+
+    // Atualize o nome do arquivo no array $file
+    $file['name'] = $novo_nome;
+
+    return $file;
+}
 
